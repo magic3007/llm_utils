@@ -3,15 +3,7 @@ import jsonlines
 import json
 import gzip
 import os
-
-def make_printv(verbose: bool):
-    def print_v(*args, **kwargs):
-        if verbose:
-            kwargs["flush"] = True
-            print(*args, **kwargs)
-        else:
-            pass
-    return print_v
+import os.path as osp
 
 def read_jsonl(path: str) -> List[dict]:
     if not os.path.exists(path):
@@ -45,3 +37,25 @@ def read_jsonl_gz(path: str) -> List[dict]:
     with gzip.open(path, "rt") as f:
         data = [json.loads(line) for line in f]
     return data
+
+
+# enumerate dataset and resume from output_path if it exists
+def enumerate_resume(
+    dataset: List[dict],
+    output_path: str,
+    identifier_key: str = "task_id",
+):
+    if not os.path.exists(output_path):
+        for i, item in enumerate(dataset):
+            yield i, item
+    else:
+        exist_items = []
+        with jsonlines.open(output_path) as reader:
+            for item in reader:
+                exist_items.append(item[identifier_key])
+
+        for i, item in enumerate(dataset):
+            # skip items that have been processed before
+            if item[identifier_key] in exist_items:
+                continue
+            yield i, item
