@@ -1,7 +1,7 @@
 from litellm import completion
 from datetime import datetime
 import openai
-from print_utils import make_printv
+from .print_utils import make_printv
 
 print_v = make_printv(True)
 
