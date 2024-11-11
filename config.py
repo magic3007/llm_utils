@@ -36,6 +36,8 @@ def _get_env(
         return v
 
 
+
+
 class Parser(argparse.ArgumentParser):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -43,74 +45,63 @@ class Parser(argparse.ArgumentParser):
     def error(self, message):
         raise Exception(f"Error: {message}\n")
 
-
 # you can derive from this class to create your own config
 class Config(Configurable):
-
     name_prefix: str = "llmutils"
     env_prefix: str = (
         f"{name_prefix.upper()}_"  # prefix for environment variables, you can override it in your derived class
     )
 
-    def _get_config_env(
-        self, option_name: str, default_value: Union[bool, int, str, float]
-    ) -> Union[bool, int, str, float]:
-        return _get_env(self.env_prefix + option_name, default_value)
 
     llm_provider = Unicode(
-        _get_config_env("llm_provider", "azure"),
+        _get_env(env_prefix + "llm_provider", "azure"),
         help="The LiteLLM API Type. See https://docs.litellm.ai/docs/",
     ).tag(config=True)
 
     llm_model = Unicode(
-        _get_config_env("llm_model", "gpt-4o"), help="The LLM model", config=True
+        _get_env(env_prefix + "llm_model", "gpt-4o"), help="The LLM model", config=True
     )
 
     llm_max_token = Int(
-        _get_config_env("llm_max_token", 1000), help="Maximum number of tokens"
+        _get_env(env_prefix + "llm_max_token", 1000), help="Maximum number of tokens"
     ).tag(config=True)
 
     llm_temperature = Float(
-        _get_config_env("llm_temperature", 0.1), help="LLM temperature"
+        _get_env(env_prefix + "llm_temperature", 0.1), help="LLM temperature"
     ).tag(config=True)
 
     max_attempts = Int(
-        _get_config_env("max_attempts", 5), help="Maximum number of attempts"
+        _get_env(env_prefix + "max_attempts", 5), help="Maximum number of attempts"
     ).tag(config=True)
 
-    debug = Bool(_get_config_env("debug", False), help="Log LLM calls").tag(config=True)
+    debug = Bool(_get_env(env_prefix + "debug", False), help="Log LLM calls").tag(config=True)
 
-    verbose = Bool(_get_config_env("verbose", False), help="Verbose").tag(config=True)
+    verbose = Bool(_get_env(env_prefix + "verbose", False), help="Verbose").tag(config=True)
 
-    log = Unicode(_get_config_env("log", "log.yaml"), help="The log file").tag(
+    log = Unicode(_get_env(env_prefix + "log", "log.yaml"), help="The log file").tag(
         config=True
     )
 
     input_path = Unicode(
-        _get_config_env("input_path", "input.json"),
+        _get_env(env_prefix + "input_path", "input.json"),
         allow_none=True,
         help="The input json file",
     ).tag(config=True)
 
     output_dir = Unicode(
-        _get_config_env("output_dir", "output_data"),
+        _get_env(env_prefix + "output_dir", "output_data"),
         allow_none=True,
         help="The output dir",
     ).tag(config=True)
 
     override = Bool(
-        _get_config_env("override", False),
+        _get_env(env_prefix + "override", False),
         help="Whether override the existing result in in the output json file",
     ).tag(config=True)
 
     nthreads = Int(
-        _get_config_env("nthreads", 1),
+        _get_env(env_prefix + "nthreads", 1),
         help="number of threads",
-    ).tag(config=True)
-
-    prompt_path = Unicode(
-        _get_config_env("prompt_path", "prompt.yaml"),
-        help="prompt template",
     ).tag(config=True)
 
     # can be configured by yaml file and command lines
@@ -126,17 +117,8 @@ class Config(Configurable):
         output_dir,
         override,
         nthreads,
-        verbose,
-        prompt_path,
+        verbose
     ]
-
-    @property
-    def output_path(self):
-        input_name, _ = osp.splitext(osp.basename(self.input_path))
-        prompt_name, _ = osp.splitext(osp.basename(self.prompt_path))
-        return osp.join(
-            self.output_dir, f"{input_name}.{prompt_name}.{self.model}.jsonl"
-        )
 
     def to_json(self) -> Dict[str, Union[int, str, bool]]:
         """Serialize the object to a JSON string."""
@@ -151,10 +133,8 @@ class Config(Configurable):
             "input_path": self.input_path,
             "output_dir": self.output_dir,
             "override": self.override,
-            "output_path": self.output_path,
             "nthreads": self.nthreads,
             "verbose": self.verbose,
-            "prompt_path": self.prompt_path,
         }
 
     def to_pretty_str(self):
@@ -163,10 +143,7 @@ class Config(Configurable):
     def _parser(self):
         parser = Parser(add_help=False)
         # (Jing) I don't know why traitlets.Float needs to be accessed once before it can appear in _trait_values.
-        _, _, _ = (
-            self.max_attempts,
-            self.llm_temperature,
-        )
+        _ = self.llm_temperature
         for trait in self._user_configurable:
             name = f"--{trait.name}"
             value = self._trait_values[trait.name]
@@ -191,8 +168,8 @@ class Config(Configurable):
         return parser
 
     def parse_user_flags(self, argv: List[str]) -> None:
-        main_parser = self._parser()
         args, remain = self._yaml_parser().parse_known_args(argv)
+        main_parser = self._parser()
         if args.config_yaml:
             with open(args.config_yaml, "r", encoding="utf-8") as f:
                 cfg = yaml.safe_load(f)
@@ -247,3 +224,11 @@ class Config(Configurable):
 
 
 config: Config = Config()
+
+if __name__ == "__main__":
+    import sys
+    rv, err = config.parse_only_user_flags(sys.argv[1:])
+    if rv is False:
+        print(err)
+    else:
+        print(f""" Starting run with the following parameters: {config.to_pretty_str()}""")
