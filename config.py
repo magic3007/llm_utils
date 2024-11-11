@@ -3,6 +3,7 @@
 # 1. Environment Variables. These are system-level settings, typically used to define global configurations, but can be overridden by configurations at other levels.
 # 2. YAML File Specification. This is a more specific configuration method, usually used to define project or application-level configurations. Settings in the YAML file can override the same settings in the environment variables.
 # 3. Command Line Specification. This is the most specific configuration method, usually used to temporarily override settings at other levels. Command line arguments can override settings in the YAML file and environment variables.
+# You can copy this file to create your own config.
 
 import argparse
 import os
@@ -45,7 +46,6 @@ class Parser(argparse.ArgumentParser):
     def error(self, message):
         raise Exception(f"Error: {message}\n")
 
-# you can derive from this class to create your own config
 class Config(Configurable):
     name_prefix: str = "llmutils"
     env_prefix: str = (
@@ -207,11 +207,11 @@ class Config(Configurable):
             if unknown:
                 return (
                     f"Unrecognized arguments: {' '.join(unknown)}\n\n"
-                    + f"Llmutils arguments:\n\n{self.user_flags_help()}"
+                    + f"{self.name_prefix} arguments:\n\n{self.user_flags_help()}"
                 )
             return True, self.user_flags()
         except Exception as e:
-            return False, str(e) + f"\nLlmutils arguments:\n\n{self.user_flags_help()}"
+            return False, str(e) + f"\n{self.name_prefix} arguments:\n\n{self.user_flags_help()}"
 
     def get_module_whitelist(self) -> str:
         if self.module_whitelist == "":
