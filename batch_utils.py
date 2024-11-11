@@ -2,6 +2,10 @@ from typing import List, Callable
 from multiprocessing import Pool
 from tqdm import tqdm
 
+def process_item(item, assemble_func, run_func, process_result_func):
+    assembled_input = assemble_func(item)
+    run_result = run_func(assembled_input)
+    return process_result_func(run_result)
 
 def batch_run(
     dataset: List,
@@ -23,13 +27,16 @@ def batch_run(
     Returns:
     List: Processed results of batch processing.
     """
-
-    def process_item(item):
-        assembled_input = assemble_func(item)
-        run_result = run_func(assembled_input)
-        return process_result_func(run_result)
-
-    with Pool(num_threads) as pool:
-        results = list(tqdm(pool.imap(process_item, dataset), total=len(dataset)))
+    if num_threads > 1:
+        with Pool(num_threads) as pool:
+            results = list(tqdm(
+                pool.starmap(
+                    process_item,
+                    [(item, assemble_func, run_func, process_result_func) for item in dataset]
+                ),
+                total=len(dataset)
+            ))
+    else:
+        results = [process_item(item, assemble_func, run_func, process_result_func) for item in dataset]
 
     return results
