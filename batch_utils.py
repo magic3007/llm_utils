@@ -42,13 +42,14 @@ def process_item(
     assembled_input = assemble_func(item)
     run_result = run_func(assembled_input)
     processed_result = process_result_func(item, assembled_input, run_result)
-    print(f"item_id: {item['id']}, processed_result: {processed_result}")
     if processed_result is not None:
-        with FileLock(output_path + ".lock"):
-            elapsed = time.time() - tt
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with FileLock(output_path + '.lock'):
             write_jsonl(output_path, [processed_result], append=True)
-
+    elapsed = time.time() - tt
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print_v(
+        f"{current_time} - Completed {item['id']:20} ({(item_id+1):5}/{total_items:5}), Elapsed(s): {elapsed:.6f}"
+    )
     return processed_result
 
 

@@ -20,7 +20,7 @@ class CompletionFailedException(Exception):
     pass
 
 
-def get_completion(
+def get_response(
     llm_provider: str,
     llm_model: str,
     llm_max_token: int,
