@@ -1,7 +1,9 @@
 from litellm import completion
 from datetime import datetime
 import openai
+import litellm
 from .print_utils import make_printv
+import time
 
 print_v = make_printv(True)
 
@@ -25,7 +27,7 @@ def get_completion(
     llm_temperature: float,
     user_prompt: str,
     completion_identifier: str,
-    max_attempts: int = 5,
+    max_attempts: int = 10,
     timeout: int = 60,
     system_prompt: str = None,
 ):
@@ -46,19 +48,15 @@ def get_completion(
                 temperature=llm_temperature,
             )
             return response
+        except litellm.exceptions.RateLimitError as e:
+            continue
         except openai.APITimeoutError as e:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print_v(f"{current_time} - {completion_identifier:20} timeout. Retrying")
             continue
         except Exception as e:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print_v(
-                f"{current_time} - {completion_identifier:20} an error occurred. {str(e)}. Retry it."
-            )
-            continue
+            raise e
 
     raise CompletionFailedException(
-        f"Failed to get completion for {completion_identifier} after {max_attempts} attempts"
+        f"Failed to get completion for {completion_identifier} after {max_attempts} attempts. Exiting"
     )
 
 
