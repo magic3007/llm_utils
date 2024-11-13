@@ -21,7 +21,7 @@ def enumerate_resume(dataset, output_path, id_key="id"):
         with jsonlines.open(output_path) as reader:
             for item in reader:
                 exist_items.append(item[id_key])
-
+        print_v(f"Number of existing items: {len(exist_items)}")
         for item_id, item in enumerate(dataset):
             # skip items that have been processed before
             if item[id_key] in exist_items:
